@@ -268,7 +268,7 @@ def main():
     # save image to directory
     img = Image.open(BytesIO(img_data))
     img.save("/"+opt.init_img)
-    init_image = load_img(opt.init_img).to(device)
+    init_image = load_img("/"+opt.init_img).to(device)
     init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
     init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
 
