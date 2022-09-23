@@ -259,8 +259,8 @@ def main():
     s3 = boto3.resource(
         's3',
         region_name=opt.region,
-        aws_access_key_id='opt.key',
-        aws_secret_access_key='opt.secret')
+        aws_access_key_id=opt.key,
+        aws_secret_access_key=opt.secret)
     my_bucket = s3.Bucket('capstone-initial-images')
     image = my_bucket.Object(opt.init_img)
     img_data = image.get().get("Body").read()
