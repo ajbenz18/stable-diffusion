@@ -14,6 +14,10 @@ from torch import autocast
 from contextlib import nullcontext
 import time
 from pytorch_lightning import seed_everything
+import boto3
+from PIL import Image
+from io import BytesIO
+import os
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
@@ -66,6 +70,27 @@ def main():
         nargs="?",
         default="a painting of a virus monster playing guitar",
         help="the prompt to render"
+    )
+    parser.add_argument(
+        "--region",
+        type=str,
+        nargs="?",
+        default="us-east-2",
+        help="AWS region"
+    )
+    parser.add_argument(
+        "--key",
+        type=str,
+        nargs="?",
+        default="x",
+        help="AWS access key ID"
+    )
+    parser.add_argument(
+        "--secret",
+        type=str,
+        nargs="?",
+        default="x",
+        help="AWS secret access key"
     )
 
     parser.add_argument(
@@ -229,7 +254,20 @@ def main():
     base_count = len(os.listdir(sample_path))
     grid_count = len(os.listdir(outpath)) - 1
 
-    assert os.path.isfile(opt.init_img)
+    # assert os.path.isfile(opt.init_img)
+    # get image from s3
+    s3 = boto3.resource(
+        's3',
+        region_name="opt.region",
+        aws_access_key_id='opt.key',
+        aws_secret_access_key='opt.secret')
+    my_bucket = s3.Bucket('capstone-initial-images')
+    image = my_bucket.Object(opt.init_img)
+    img_data = image.get().get("Body").read()
+
+    # save image to directory
+    img = Image.open(BytesIO(img_data))
+    img.save("/"+opt.init_img)
     init_image = load_img(opt.init_img).to(device)
     init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
     init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
@@ -284,7 +322,8 @@ def main():
                     grid_count += 1
 
                 toc = time.time()
-
+    os.remove("/"+opt.init_img)
+    s3.Object("capstone-initial-images", opt.init_img).delete()
     print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
           f" \nEnjoy.")
 
